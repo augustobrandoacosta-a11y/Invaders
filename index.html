@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Global Conquest: Invader Edition</title>
+    <title>Global Conquest: Live Multiplayer</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-        body { background: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 15px; }
+        body { background: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 15px; }
         .header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
         .stat-box { font-weight: bold; font-size: 16px; color: #38bdf8; }
         .nav-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
@@ -18,15 +19,17 @@
         .card { background: #1e293b; border-radius: 12px; padding: 15px; margin-bottom: 12px; border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; }
         .card-info { display: flex; align-items: center; gap: 12px; }
         .flag { font-size: 32px; }
-        .action-btn { background: #22c55e; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; }
+        .action-btn { background: #22c55e; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; }
         .action-btn:disabled { background: #475569; opacity: 0.6; }
         
-        /* Battle Canvas Modal */
-        #battleOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.95); flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        .battle-bar-container { width: 80%; background: #334155; height: 24px; border-radius: 12px; overflow: hidden; margin: 20px 0; border: 2px solid #64748b; }
-        .battle-bar { width: 50%; height: 100%; background: #ef4444; transition: width 0.1s linear; }
-        .tap-target { width: 160px; height: 160px; border-radius: 50%; background: #2563eb; border: 4px solid #60a5fa; color: white; font-size: 20px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(37,99,235,0.5); }
-        .tap-target:active { transform: scale(0.95); background: #1d4ed8; }
+        .pvp-box { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; text-align: center; margin-bottom: 15px; }
+        input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 18px; text-align: center; margin: 10px 0; text-transform: uppercase; }
+        
+        #battleOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.98); flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .battle-bar-container { width: 85%; background: #334155; height: 30px; border-radius: 15px; overflow: hidden; margin: 25px 0; border: 2px solid #64748b; }
+        .battle-bar { width: 50%; height: 100%; background: #ef4444; transition: width 0.05s linear; }
+        .tap-target { width: 180px; height: 180px; border-radius: 50%; background: #2563eb; border: 5px solid #60a5fa; color: white; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(37,99,235,0.6); }
+        .tap-target:active { transform: scale(0.92); background: #1d4ed8; }
     </style>
 </head>
 <body>
@@ -40,24 +43,38 @@
     </div>
 
     <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('soloTab', this)">🌐 AI Campaign</button>
-        <button class="tab-btn" onclick="switchTab('pvpTab', this)">⚔️ PvP Arena</button>
-        <button class="tab-btn" onclick="switchTab('shopTab', this)">🛍️ Skins Shop</button>
+        <button class="tab-btn active" onclick="switchTab('pvpTab', this)">⚔️ Live Players</button>
+        <button class="tab-btn" onclick="switchTab('soloTab', this)">🌐 AI Campaign</button>
+        <button class="tab-btn" onclick="switchTab('shopTab', this)">🛍️ Skins</button>
+    </div>
+
+    <!-- LIVE ONLINE PVP -->
+    <div id="pvpTab" class="section active">
+        <div class="pvp-box">
+            <h3>HOST A ROOM</h3>
+            <p style="color: #94a3b8; font-size: 14px;">Generate a code for another player to join your game.</p>
+            <button class="action-btn" style="width: 100%; padding: 15px;" onclick="createRoom()">Create Battle Room</button>
+            <div id="roomCodeDisplay" style="margin-top: 15px; font-size: 20px; font-weight: bold; color: #38bdf8;"></div>
+        </div>
+
+        <div class="pvp-box">
+            <h3>JOIN REAL PLAYER</h3>
+            <p style="color: #94a3b8; font-size: 14px;">Enter a friend's room code to challenge them live.</p>
+            <input type="text" id="joinCodeInput" placeholder="ENTER 4-LETTER CODE" maxlength="4">
+            <button class="action-btn" style="width: 100%; padding: 15px; background: #8b5cf6;" onclick="joinRoom()">Join & Invade</button>
+        </div>
     </div>
 
     <!-- SOLO AI CAMPAIGN -->
-    <div id="soloTab" class="section active"></div>
-
-    <!-- PLAYER CHALLENGE ARENA -->
-    <div id="pvpTab" class="section"></div>
+    <div id="soloTab" class="section"></div>
 
     <!-- SKINS SHOP -->
     <div id="shopTab" class="section"></div>
 
     <!-- BATTLE OVERLAY -->
     <div id="battleOverlay">
-        <h2 id="battleTitle">Invading Country...</h2>
-        <p style="color: #94a3b8;">TAP FAST TO OVERPOWER DEFENSES!</p>
+        <h2 id="battleTitle">Invading Opponent...</h2>
+        <p style="color: #94a3b8;" id="battleSubtitle">TAP FAST TO OVERPOWER DEFENSES!</p>
         <div class="battle-bar-container">
             <div id="battleBar" class="battle-bar"></div>
         </div>
@@ -65,14 +82,7 @@
     </div>
 
     <script>
-        // Game State
-        let state = {
-            gold: 100,
-            activeSkin: 'Red Army',
-            ownedSkins: ['Red Army'],
-            conqueredAI: []
-        };
-
+        let state = { gold: 100, activeSkin: 'Red Army', ownedSkins: ['Red Army'], conqueredAI: [] };
         const skins = [
             { id: 'Red Army', price: 0, power: 1.0, icon: '🚩', color: '#f43f5e' },
             { id: 'Cyber Strike', price: 200, power: 1.3, icon: '⚡', color: '#06b6d4' },
@@ -84,25 +94,16 @@
             { id: 'c1', name: 'Tiny Atoll', flag: '🏝️', defense: 30, reward: 80 },
             { id: 'c2', name: 'Desert Republic', flag: '🏜️', defense: 75, reward: 180 },
             { id: 'c3', name: 'Alpine Kingdom', flag: '🏔️', defense: 140, reward: 350 },
-            { id: 'c4', name: 'Industrial Union', flag: '🏭', defense: 250, reward: 600 },
-            { id: 'c5', name: 'Global Superpower', flag: '🏰', defense: 450, reward: 1200 }
+            { id: 'c4', name: 'Industrial Union', flag: '🏭', defense: 250, reward: 600 }
         ];
 
-        const pvpPlayers = [
-            { name: 'Commander_Viper', flag: '🐉', defense: 100, reward: 250 },
-            { name: 'ShadowRiderX', flag: '🥷', defense: 220, reward: 500 },
-            { name: 'Overlord_99', flag: '🤖', defense: 400, reward: 950 }
-        ];
-
-        let currentBattle = null;
-        let battleProgress = 50;
-        let battleInterval = null;
+        let peer = null, conn = null, isHost = false;
+        let battleProgress = 50, currentBattle = null, battleInterval = null;
 
         function updateUI() {
             document.getElementById('goldDisplay').innerText = state.gold;
             document.getElementById('playerSkinTitle').innerText = state.activeSkin;
             renderSolo();
-            renderPVP();
             renderShop();
         }
 
@@ -111,6 +112,133 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
+        }
+
+        // --- REAL-TIME MULTIPLAYER (PEERJS) ---
+        function generateCode() {
+            return Math.random().toString(36).substring(2, 6).toUpperCase();
+        }
+
+        function createRoom() {
+            const code = generateCode();
+            document.getElementById('roomCodeDisplay').innerText = `YOUR CODE: ${code}`;
+            isHost = true;
+            
+            peer = new Peer(`INVADE-${code}`);
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnection();
+                startLiveBattle('Real Player', true);
+            });
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+            if (code.length !== 4) return alert("Enter a valid 4-letter room code.");
+            
+            isHost = false;
+            peer = new Peer();
+            peer.on('open', () => {
+                conn = peer.connect(`INVADE-${code}`);
+                setupConnection();
+            });
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                if (!isHost) startLiveBattle('Real Player', false);
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'TAP') {
+                    // Reverse push direction for opponent tap
+                    battleProgress += (isHost ? -data.power : data.power) * 4;
+                    updateBattleBar();
+                    checkLiveEnd();
+                }
+            });
+        }
+
+        function startLiveBattle(opponentName, hostFlag) {
+            const skinObj = skins.find(s => s.id === state.activeSkin);
+            currentBattle = { mode: 'pvp', skinPower: skinObj.power };
+            battleProgress = 50;
+            
+            document.getElementById('battleTitle').innerText = `LIVE BATTLE vs ${opponentName}`;
+            document.getElementById('battleSubtitle').innerText = "PUSH THE BAR TO THE OPPONENT'S SIDE!";
+            document.getElementById('battleOverlay').style.display = 'flex';
+            updateBattleBar();
+        }
+
+        function registerTap() {
+            if (!currentBattle) return;
+            const skinObj = skins.find(s => s.id === state.activeSkin);
+            
+            if (currentBattle.mode === 'pvp' && conn) {
+                battleProgress += (isHost ? skinObj.power : -skinObj.power) * 4;
+                conn.send({ type: 'TAP', power: skinObj.power });
+                updateBattleBar();
+                checkLiveEnd();
+            } else if (currentBattle.mode === 'ai') {
+                battleProgress += (8 * skinObj.power);
+                updateBattleBar();
+                if (battleProgress >= 100) endBattle(true);
+            }
+        }
+
+        function checkLiveEnd() {
+            if (isHost && battleProgress >= 100) endLiveBattle(true);
+            else if (isHost && battleProgress <= 0) endLiveBattle(false);
+            else if (!isHost && battleProgress <= 0) endLiveBattle(true);
+            else if (!isHost && battleProgress >= 100) endLiveBattle(false);
+        }
+
+        function endLiveBattle(won) {
+            document.getElementById('battleOverlay').style.display = 'none';
+            if (won) {
+                state.gold += 300;
+                alert("VICTORY! You defeated the real player and claimed 300 Gold!");
+            } else {
+                alert("DEFEAT! The opponent pushed back your invasion force.");
+            }
+            if (conn) conn.close();
+            currentBattle = null;
+            updateUI();
+        }
+
+        // --- AI CAMPAIGN MODE ---
+        function startAIBattle(name, defense, reward, id) {
+            const skinObj = skins.find(s => s.id === state.activeSkin);
+            currentBattle = { name, defense, reward, id, mode: 'ai', skinPower: skinObj.power };
+            battleProgress = 50;
+            
+            document.getElementById('battleTitle').innerText = `Invading ${name}`;
+            document.getElementById('battleSubtitle').innerText = "TAP FAST TO OVERPOWER AI DEFENSES!";
+            document.getElementById('battleOverlay').style.display = 'flex';
+            
+            battleInterval = setInterval(() => {
+                battleProgress -= (defense / 20);
+                updateBattleBar();
+                if (battleProgress <= 0) endBattle(false);
+            }, 100);
+        }
+
+        function endBattle(won) {
+            clearInterval(battleInterval);
+            document.getElementById('battleOverlay').style.display = 'none';
+            if (won) {
+                state.gold += currentBattle.reward;
+                if (currentBattle.id) state.conqueredAI.push(currentBattle.id);
+                alert(`VICTORY! You conquered ${currentBattle.name} and earned 🪙${currentBattle.reward} Gold!`);
+            } else {
+                alert(`DEFEAT! AI defenses repelled your force.`);
+            }
+            currentBattle = null;
+            updateUI();
+        }
+
+        function updateBattleBar() {
+            document.getElementById('battleBar').style.width = `${Math.min(100, Math.max(0, battleProgress))}%`;
         }
 
         function renderSolo() {
@@ -126,28 +254,11 @@
                                 <div style="font-size:12px; color:#94a3b8">Defense: ${c.defense} | Reward: 🪙${c.reward}</div>
                             </div>
                         </div>
-                        <button class="action-btn" ${conquered ? 'disabled' : ''} onclick="startBattle('${c.name}', ${c.defense}, ${c.reward}, '${c.id}', 'ai')">
+                        <button class="action-btn" ${conquered ? 'disabled' : ''} onclick="startAIBattle('${c.name}', ${c.defense}, ${c.reward}, '${c.id}')">
                             ${conquered ? 'Occupied' : 'Invade'}
                         </button>
                     </div>`;
             }).join('');
-        }
-
-        function renderPVP() {
-            const container = document.getElementById('pvpTab');
-            container.innerHTML = pvpPlayers.map(p => `
-                <div class="card">
-                    <div class="card-info">
-                        <span class="flag">${p.flag}</span>
-                        <div>
-                            <div style="font-weight:bold">${p.name}</div>
-                            <div style="font-size:12px; color:#94a3b8">Fortress Power: ${p.defense} | Bounty: 🪙${p.reward}</div>
-                        </div>
-                    </div>
-                    <button class="action-btn" style="background:#8b5cf6;" onclick="startBattle('${p.name}', ${p.defense}, ${p.reward}, null, 'pvp')">
-                        Challenge
-                    </button>
-                </div>`).join('');
         }
 
         function renderShop() {
@@ -161,7 +272,7 @@
                             <span class="flag">${s.icon}</span>
                             <div>
                                 <div style="font-weight:bold; color:${s.color}">${s.id}</div>
-                                <div style="font-size:12px; color:#94a3b8">Attack Multiplier: x${s.power}</div>
+                                <div style="font-size:12px; color:#94a3b8">Power Multiplier: x${s.power}</div>
                             </div>
                         </div>
                         <button class="action-btn" style="background:${active ? '#0284c7' : '#334155'}" 
@@ -183,52 +294,8 @@
             updateUI();
         }
 
-        function startBattle(name, defense, reward, id, mode) {
-            const skinObj = skins.find(s => s.id === state.activeSkin);
-            currentBattle = { name, defense, reward, id, mode, skinPower: skinObj.power };
-            battleProgress = 50;
-            
-            document.getElementById('battleTitle').innerText = `Invading ${name}`;
-            document.getElementById('battleOverlay').style.display = 'flex';
-            
-            // Enemy auto-push back timer
-            battleInterval = setInterval(() => {
-                battleProgress -= (defense / 20);
-                updateBattleBar();
-                if (battleProgress <= 0) endBattle(false);
-            }, 100);
-        }
-
         document.getElementById('tapBtn').addEventListener('touchstart', (e) => { e.preventDefault(); registerTap(); });
         document.getElementById('tapBtn').addEventListener('click', registerTap);
-
-        function registerTap() {
-            if (!currentBattle) return;
-            battleProgress += (8 * currentBattle.skinPower);
-            updateBattleBar();
-            if (battleProgress >= 100) endBattle(true);
-        }
-
-        function updateBattleBar() {
-            document.getElementById('battleBar').style.width = `${Math.min(100, Math.max(0, battleProgress))}%`;
-        }
-
-        function endBattle(won) {
-            clearInterval(battleInterval);
-            document.getElementById('battleOverlay').style.display = 'none';
-            
-            if (won) {
-                state.gold += currentBattle.reward;
-                if (currentBattle.mode === 'ai' && currentBattle.id) {
-                    state.conqueredAI.push(currentBattle.id);
-                }
-                alert(`VICTORY! You conquered ${currentBattle.name} and earned 🪙${currentBattle.reward} Gold!`);
-            } else {
-                alert(`DEFEAT! ${currentBattle.name}'s defenses repelled your invasion force.`);
-            }
-            currentBattle = null;
-            updateUI();
-        }
 
         updateUI();
     </script>
